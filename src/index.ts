@@ -64,7 +64,7 @@ Select your choice : `;
 
     case 2: {
       await question(
-        '\nFor insert file Example you can use ./ouput/output_consul.txt'
+        '\nFor insert file Example you can use ./ouput/output_consul.txt. Please Enter To Continue .... '
       );
       const consulURL = await question(
         '\nEnter the ALL target consul URL for Create New Key & Value : '
