@@ -6,7 +6,7 @@ let host = '';
 let port = '';
 
 const runningAgain = async () => {
-  const runAgain = await question('\nRunning Again ? [Y/N]: ');
+  const runAgain = await question('\nRunning Again ? [y/N]: ');
 
   if (['Y', 'y', 'YES', 'Yes', 'yes'].includes(runAgain)) {
     alreadyRunAgain = true;
