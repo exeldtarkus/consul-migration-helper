@@ -11,5 +11,5 @@ npm install
 ```javascript
 1. for migrate / update consul you can use example text input in forder ./output/output_consul.txt
 2. prepare host and port consul
-3. run script `npm run script:consul-migrate`
+3. run script `npm run start:2`
 ```

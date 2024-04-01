@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "script:consul-migrate": "npx ts-node ./src/index.ts",
+    "start:1": "npx ts-node ./src/index.ts",
+    "start:2": "npx ts-node ./src/index_v2.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "gts lint",
     "clean": "gts clean",

@@ -41,3 +41,6 @@ build/**/*
 
 # ignore yarn.lock
 yarn.lock
+
+# ignore output
+output/

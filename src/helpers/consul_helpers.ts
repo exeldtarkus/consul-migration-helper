@@ -15,7 +15,7 @@ interface IGetKey {
 const getKVToAndConvertDotEnv = async (params: {
   consulHost: string;
   consulPort: string;
-  consulURLPath: string;
+  consulTargetURL: string;
 }) => {
   try {
     const consul = consulConfig({
@@ -23,8 +23,19 @@ const getKVToAndConvertDotEnv = async (params: {
       port: params.consulPort,
     });
 
-    const parsedUrl = new URL(params.consulURLPath);
-    const consulPath = parsedUrl.pathname.replace('/ui/dc1/kv/', '');
+    const parsedUrl = new URL(params.consulTargetURL);
+    let consulPath = parsedUrl.pathname.replace('/ui/dc1/kv/', '');
+
+    if (consulPath.slice(-1) !== '/') {
+      consulPath += '/';
+    }
+
+    const fileName = consulPath
+      .split('/')
+      .slice(-2)
+      .toString()
+      .replace(',', '')
+      .trimEnd();
 
     const getKV: [] = await consul.kv.keys({
       key: consulPath,
@@ -62,7 +73,7 @@ const getKVToAndConvertDotEnv = async (params: {
       }
     }
 
-    fs.writeFileSync('./output/output_consul.txt', content);
+    fs.writeFileSync(`./output/${fileName}.txt`, content);
     return true;
   } catch (error) {
     console.log('\nError : ', error);
@@ -74,7 +85,7 @@ const createNewKV = async (params: {
   consulHost: string;
   consulPort: string;
   filePath: string;
-  consulURLPath: string;
+  consulTargetURL: string;
   consulNewFolder: string;
 }) => {
   try {
@@ -83,7 +94,7 @@ const createNewKV = async (params: {
       port: params.consulPort,
     });
 
-    const parsedUrl = new URL(params.consulURLPath);
+    const parsedUrl = new URL(params.consulTargetURL);
     const consulPath = parsedUrl.pathname.replace(/\/ui\/dc1\/kv\//, '');
 
     const savingPath = consulPath + params.consulNewFolder;
@@ -112,7 +123,7 @@ const createNewKV = async (params: {
 
       if (keysProcessed === totalKeys) {
         console.log(
-          `\nYour new file : ${params.consulURLPath}${params.consulNewFolder}`
+          `\nYour new file : ${params.consulTargetURL}${params.consulNewFolder}`
         );
         console.log('\nConsul Already Create successfully!');
       }
