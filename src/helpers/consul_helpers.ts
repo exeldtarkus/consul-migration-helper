@@ -1,16 +1,9 @@
 /* eslint-disable node/no-unsupported-features/node-builtins */
-import consulConfig from '../config/consul';
-import {updateProgressBar} from '../utils/progress_bar_util';
+import consulConfig from '../configs/consul';
+import {IGetKey} from '../interfaces/consul_interface';
+import {getConsulFileName} from '../utils/folders_util';
 import * as fs from 'fs';
-
-interface IGetKey {
-  LockIndex: number;
-  Key: string;
-  Flags: number;
-  Value: null | any;
-  CreateIndex: number;
-  ModifyIndex: number;
-}
+import {singleProgressBar} from '../configs/cli_progress';
 
 const getKVToAndConvertDotEnv = async (params: {
   consulHost: string;
@@ -43,37 +36,27 @@ const getKVToAndConvertDotEnv = async (params: {
 
     let content = '';
 
-    const totalKeys = getKV.length;
-    let keysProcessed = 0;
+    const progressBar = singleProgressBar(fileName);
+    progressBar.start(getKV.length - 1, 0);
 
-    const progressBarWidth = 30;
-    const progressBarIncrement = Math.ceil(totalKeys / progressBarWidth);
-
-    for (const item of getKV) {
+    for (let i = 0; i < getKV.length; i++) {
+      const item = getKV[i];
       const getItems: IGetKey = await consul.kv.get(item);
 
       const key = getItems.Key.replace(consulPath, '');
       const value = getItems.Value;
 
-      if (!key || !value) {
+      if (!key) {
         continue;
       }
-      content += `${key}=${value}\n`;
-
-      keysProcessed += 1;
-      if (
-        keysProcessed % progressBarIncrement === 0 ||
-        keysProcessed === totalKeys
-      ) {
-        updateProgressBar({keysProcessed, progressBarWidth, totalKeys});
-      }
-
-      if (keysProcessed === totalKeys) {
-        console.log('\nFile written successfully!');
-      }
+      content += `${key}=${value ? value : ''}\n`;
+      progressBar.update(i);
     }
 
     fs.writeFileSync(`./output/${fileName}.txt`, content);
+    progressBar.stop();
+    console.log(`\nData [${fileName}] Already Recorded...\n`);
+
     return true;
   } catch (error) {
     console.log('\nError : ', error);
@@ -102,33 +85,20 @@ const createNewKV = async (params: {
     const findFile = fs.readFileSync(params.filePath, 'utf-8');
     const fileLine = findFile.trim().split('\n');
 
-    const totalKeys = fileLine.length;
-    let keysProcessed = 0;
+    const progressBar = singleProgressBar(params.consulNewFolder);
+    progressBar.start(fileLine.length - 1, 0);
 
-    const progressBarWidth = 30;
-    const progressBarIncrement = Math.ceil(totalKeys / progressBarWidth);
-
-    for (const i in fileLine) {
+    for (let i = 0; i < fileLine.length; i++) {
       const itemLine = fileLine[i];
       const [key, value] = itemLine.split('=');
 
-      keysProcessed += 1;
-
-      if (
-        keysProcessed % progressBarIncrement === 0 ||
-        keysProcessed === totalKeys
-      ) {
-        updateProgressBar({keysProcessed, progressBarWidth, totalKeys});
-      }
-
-      if (keysProcessed === totalKeys) {
-        console.log(
-          `\nYour new file : ${params.consulTargetURL}${params.consulNewFolder}`
-        );
-        console.log('\nConsul Already Create successfully!');
-      }
       await consul.kv.set(`${savingPath}/${key}`, value);
+      progressBar.update(i);
     }
+
+    progressBar.stop();
+    console.log(`\nData [${params.consulNewFolder}] Insert on Consul...\n`);
+
     return true;
   } catch (error) {
     console.log('Error : ', error);
@@ -136,4 +106,67 @@ const createNewKV = async (params: {
   }
 };
 
-export {getKVToAndConvertDotEnv, createNewKV};
+const getFolderAndKV = async (params: {
+  consulHost: string;
+  consulPort: string;
+  consulTargetURL: string;
+}) => {
+  try {
+    const consul = consulConfig({
+      host: params.consulHost,
+      port: params.consulPort,
+    });
+
+    const parsedUrl = new URL(params.consulTargetURL);
+    let consulPath = parsedUrl.pathname.replace('/ui/dc1/kv/', '');
+
+    if (consulPath.slice(-1) !== '/') {
+      consulPath += '/';
+    }
+
+    const getKV: string[] = await consul.kv.keys({
+      key: consulPath,
+    });
+
+    let fileName = '';
+    let content = '';
+
+    const progressBar = singleProgressBar('fileName');
+    progressBar.start(getKV.length - 1, 0);
+
+    for (let i = 0; i < getKV.length; i++) {
+      const item = getKV[i];
+      const getItems: IGetKey = await consul.kv.get(item);
+
+      const consulKeyPath = getItems.Key.replace(consulPath, '');
+      const rawKey = consulKeyPath.split('/');
+
+      const key = rawKey[rawKey.length - 1];
+      const value = getItems.Value;
+
+      if (!key) {
+        continue;
+      }
+
+      const getFileName = getConsulFileName(consulKeyPath);
+
+      if (getFileName !== fileName) {
+        fileName = getFileName;
+        content = '';
+      }
+
+      content += `${key}=${value ? value : ''}\n`;
+      fs.writeFileSync(`./output/${fileName}.txt`, content);
+      progressBar.update(i);
+    }
+
+    progressBar.stop();
+
+    return true;
+  } catch (error) {
+    console.log('Error : ', error);
+    return false;
+  }
+};
+
+export {getKVToAndConvertDotEnv, createNewKV, getFolderAndKV};

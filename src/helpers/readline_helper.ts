@@ -1,5 +1,5 @@
 /* eslint-disable no-process-exit */
-import rl from '../config/readline';
+import rl from '../configs/readline';
 
 const close = (message?: string) => {
   rl.on('close', () => {
