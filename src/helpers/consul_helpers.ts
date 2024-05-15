@@ -1,7 +1,7 @@
 /* eslint-disable node/no-unsupported-features/node-builtins */
 import consulConfig from '../configs/consul';
 import {IGetKey} from '../interfaces/consul_interface';
-import {getConsulFileName} from '../utils/folders_util';
+import {createFolderPath, getConsulFileName} from '../utils/folders_util';
 import * as fs from 'fs';
 import {singleProgressBar} from '../configs/cli_progress';
 
@@ -112,33 +112,48 @@ const getFolderAndKV = async (params: {
   consulTargetURL: string;
 }) => {
   try {
+    let targetUrl = '';
+
     const consul = consulConfig({
       host: params.consulHost,
       port: params.consulPort,
     });
 
     const parsedUrl = new URL(params.consulTargetURL);
-    let consulPath = parsedUrl.pathname.replace('/ui/dc1/kv/', '');
+
+    if (parsedUrl.pathname === '/ui/dc1/kv') {
+      targetUrl = parsedUrl.pathname + '/';
+    } else {
+      targetUrl = parsedUrl.pathname;
+    }
+
+    let consulPath = targetUrl.replace('/ui/dc1/kv/', '');
 
     if (consulPath.slice(-1) !== '/') {
       consulPath += '/';
     }
 
-    const getKV: string[] = await consul.kv.keys({
-      key: consulPath,
-    });
+    let getKV: string[];
+
+    if (consulPath === '/') {
+      getKV = await consul.kv.keys();
+    } else {
+      getKV = await consul.kv.keys({
+        key: consulPath,
+      });
+    }
 
     let fileName = '';
     let content = '';
 
-    const progressBar = singleProgressBar('fileName');
+    const progressBar = singleProgressBar('Process');
     progressBar.start(getKV.length - 1, 0);
 
     for (let i = 0; i < getKV.length; i++) {
       const item = getKV[i];
       const getItems: IGetKey = await consul.kv.get(item);
 
-      const consulKeyPath = getItems.Key.replace(consulPath, '');
+      const consulKeyPath = getItems.Key;
       const rawKey = consulKeyPath.split('/');
 
       const key = rawKey[rawKey.length - 1];
@@ -148,6 +163,7 @@ const getFolderAndKV = async (params: {
         continue;
       }
 
+      const forlderPath = createFolderPath(consulKeyPath);
       const getFileName = getConsulFileName(consulKeyPath);
 
       if (getFileName !== fileName) {
@@ -156,11 +172,12 @@ const getFolderAndKV = async (params: {
       }
 
       content += `${key}=${value ? value : ''}\n`;
-      fs.writeFileSync(`./output/${fileName}.txt`, content);
+      fs.writeFileSync(`${forlderPath}/${fileName}.txt`, content);
       progressBar.update(i);
     }
 
     progressBar.stop();
+    console.log('\nData Already Created...\n');
 
     return true;
   } catch (error) {
