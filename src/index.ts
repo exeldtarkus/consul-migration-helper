@@ -1,10 +1,12 @@
 /* eslint-disable node/no-unsupported-features/node-builtins */
+import figlet from 'figlet';
 import {
   createNewKV,
   getKVToAndConvertDotEnv,
   getFolderAndKV,
 } from './helpers/consul_helpers';
-import {close, question} from './helpers/readline_helper';
+import {close, createBlinkingText, question} from './helpers/readline_helper';
+import {textASCIIArt} from './utils/asciiArt_util';
 
 let alreadyRunAgain = false;
 let host = '';
@@ -26,6 +28,8 @@ const runningAgain = async () => {
 };
 
 async function main() {
+  textASCIIArt('Tarkus');
+
   await question('Migrate Consul - [Press Any Key to Continue] ...');
 
   const questionOptions = `
